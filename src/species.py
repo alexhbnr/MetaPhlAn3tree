@@ -81,7 +81,7 @@ class Species:
         missing_gcas = self.genomes.loc[self.genomes['assembly_level'].isnull(),
                                         'GCAid'].tolist()
         if len(missing_gcas) > 0:
-            print(f"{len(missing_gcas)} genomes have missing information. Search "
+            print(f"\t\t{len(missing_gcas)} genomes have missing information. Search "
                 "on NCBI Assembly for them.", file=sys.stderr)
             # Retrieve for each missing entry from NCBI Assembly
             gca_entries = []
@@ -113,7 +113,7 @@ class Species:
             self.genomes = pd.concat([self.genomes.loc[~self.genomes['assembly_level'].isnull()],
                                             missing_genomes])
         else:
-            print("No genomes have missing information. Continue.", file=sys.stderr)
+            print("\t\tNo genomes have missing information. Continue.", file=sys.stderr)
 
     def determine_representative_genomes(self):
         """Determine the representative genome by evaluating assembly info."""
@@ -143,7 +143,7 @@ class Species:
         self.representative_genomes = assembly_stats.iloc[assembly_stats \
                                                           .groupby(['taxid']) \
                                                           ['rank'].idxmin()] \
-                                                          ['GCAid'].tolist()
+                                                          ['GCAid'].unique().tolist()
 
     def write_url_list(self, outfn):
         """Write list of links to genomes for representative genomes to file."""
@@ -151,6 +151,25 @@ class Species:
             return f'{ftppath}/{os.path.basename(ftppath)}_genomic.fna.gz' 
 
         link_df = self.genomes.loc[self.genomes['GCAid'].isin(self.representative_genomes),
-                                   ('GCAid', 'ftp_path')].copy()
+                                   ('GCAid', 'ftp_path')].drop_duplicates().copy()
+
+        empty_ftp_gcaids = link_df.loc[link_df['ftp_path'] == ""]['GCAid'].tolist()
+        if len(empty_ftp_gcaids) > 0:
+            print(f"\t\t{len(empty_ftp_gcaids)} genomes with a mixing FTP link. "
+                  "Fetch from NCBI Assembly", file=sys.stderr)
+            ftp_entries = []
+            for gcaid in empty_ftp_gcaids:
+                eterm_handle = Entrez.esearch(db="assembly", term=gcaid, report="full")
+                eterm_record = Entrez.read(eterm_handle)
+                esummary_handle = Entrez.esummary(db="assembly", id=eterm_record['IdList'][0], report='full')
+                esummary_record = Entrez.read(esummary_handle)
+                ftp_entries.append(esummary_record['DocumentSummarySet'] \
+                                   ['DocumentSummary'][0]['FtpPath_RefSeq'])
+        link_df.loc[link_df['ftp_path'] == "", 'ftp_path'] = ftp_entries
+        print(f"\t\tSkipping {link_df.loc[link_df['ftp_path'] == ''].shape[0]} "
+              f"genomes ({', '.join(link_df.loc[link_df['ftp_path'] == '', 'GCAid'].tolist())})"
+              " from analysis because of no FTP link information.", file=sys.stderr)
+        link_df = link_df.loc[link_df['ftp_path'] != ""]
+
         link_df['url'] = link_df['ftp_path'].map(generate_url)
         link_df[['GCAid', 'url']].to_csv(outfn, sep="\t", index=False)

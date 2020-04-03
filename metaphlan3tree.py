@@ -13,6 +13,7 @@ import subprocess
 import sys
 
 from src import species
+from utils import config
 
 
 # Args = {'databasedir': '/projects1/users/huebner/miniconda3/envs/metaphlan2/bin/metaphlan_databases',
@@ -29,58 +30,75 @@ def main():
        distances based on underlying phylogenetic information such as UniFrac
        or PhILR.
     """
-    # Extract list of species from MetaPhlAn database pickle
-    if os.path.isdir(Args['databasedir']):
-        db_versions = [re.search(r'mpa_v([0-9]+)_.+.pkl',
-                                 os.path.basename(db)).group(1)
-                       for db in glob(f"{Args['databasedir']}/*.pkl")]
-        db_versions.sort()
-        if Args['metaphlanversion'] == 'latest':
-            db_version = db_versions[-1]
-        elif Args['metaphlanversion'].replace("v", "") in db_versions:
-            db_version = Args['metaphlanversion'].replace("v", "")
-        else:
-            print(f"The database version {Args['metaphlanversion']} is not "
-                  f"present in the database directory {Args['databasedir']}. "
-                  "The following database versions are currently available: "
-                  f"{', '.join(['v' + db for db in db_versions])}. Either "
-                  "pick from the available or download the database using "
-                  "MetaPhlAn.",
-                  file=sys.stderr)
-            sys.exit(1)
-        species_cont = species.Species(db_version, Args['databasedir'])
-        print("Extract the strain information from the MetaPhlAn database",
-              file=sys.stderr)
-        species_cont.extract_strains()
-    else:
-        print(f'The directory {Args["databasedir"]} does not exist. Specify a '
-               'valid directory that contains the MetaPhlAn databases.',
-               file=sys.stderr)
-        sys.exit(1)
+    # Configure
+    config.argparse_to_json(Args)
+    if Args['snakemakedir'] is None:
+        Args['snakemakedir'] = os.path.dirname(os.path.realpath(__file__)) + "/snakemake"
 
-    # Download the overview of RefSeq genomes and join information with genomes
-    print("Download the GCA assembly summary from NCBI",
-          file=sys.stderr)
-    if not os.path.isdir(Args['tmpdir']):
-        os.makedirs(Args['tmpdir'])
-    subprocess.run(f'cd  {Args["tmpdir"]} && wget -N -nH '
-                    '--user-agent=Mozilla/5.0 --relative -r --no-parent '
-                    '--reject "index.html*" --cut-dirs=2 -e robots=off '
-                    f'{Args["genbankurl"]}', shell=True)
-    print("Join the GCA assembly summary information with the MetaPhlAn "
-          "database information", file=sys.stderr)
-    species_cont.join_genbank(Args['tmpdir'] + "/" +
-                              os.path.basename(Args['genbankurl'])) 
-    print(f"Fetch information for missing genomes from NCBI Assembly directly.",
-          file=sys.stderr)
-    species_cont.get_missing_information()
-    print("Determine the representative genomes of "
-          f"{species_cont.genomes.shape[0]} genomes present in the database",
-          file=sys.stderr)
-    species_cont.determine_representative_genomes()
-    print(f"Identified {len(species_cont.representative_genomes)} genomes. "
-           "Download genomes from NCBI.", file=sys.stderr)
-    species_cont.write_url_list(Args['tmpdir'] + "/repgenomes_urls.txt")
+    # Extract list of species from MetaPhlAn database pickle
+    if (not os.path.isfile(Args['tmpdir'] + "/repgenomes_urls.txt") or
+        Args['force']):
+        print("1. Extract all species from MetaPhlAn database and prepare URLS "
+              "for download from NCBI.", file=sys.stderr)
+        if os.path.isdir(Args['databasedir']):
+            db_versions = [re.search(r'mpa_v([0-9]+)_.+.pkl',
+                                    os.path.basename(db)).group(1)
+                        for db in glob(f"{Args['databasedir']}/*.pkl")]
+            db_versions.sort()
+            if Args['metaphlanversion'] == 'latest':
+                db_version = db_versions[-1]
+            elif Args['metaphlanversion'].replace("v", "") in db_versions:
+                db_version = Args['metaphlanversion'].replace("v", "")
+            else:
+                print(f"The database version {Args['metaphlanversion']} is not "
+                    f"present in the database directory {Args['databasedir']}. "
+                    "The following database versions are currently available: "
+                    f"{', '.join(['v' + db for db in db_versions])}. Either "
+                    "pick from the available or download the database using "
+                    "MetaPhlAn.",
+                    file=sys.stderr)
+                sys.exit(1)
+            species_cont = species.Species(db_version, Args['databasedir'])
+            print("\tExtract the strain information from the MetaPhlAn database",
+                file=sys.stderr)
+            species_cont.extract_strains()
+        else:
+            print(f'The directory {Args["databasedir"]} does not exist. Specify a '
+                'valid directory that contains the MetaPhlAn databases.',
+                file=sys.stderr)
+            sys.exit(1)
+
+        # Download the overview of RefSeq genomes and join information with genomes
+        print("\tDownload the GCA assembly summary from NCBI\n",
+            file=sys.stderr)
+        if not os.path.isdir(Args['tmpdir']):
+            os.makedirs(Args['tmpdir'])
+        subprocess.run(f'cd  {Args["tmpdir"]} && wget -N -nH '
+                        '--user-agent=Mozilla/5.0 --relative -r --no-parent '
+                        '--reject "index.html*" --cut-dirs=2 -e robots=off '
+                        f'{Args["genbankurl"]}', shell=True)
+        print("\tJoin the GCA assembly summary information with the MetaPhlAn "
+            "database information", file=sys.stderr)
+        species_cont.join_genbank(Args['tmpdir'] + "/" +
+                                os.path.basename(Args['genbankurl'])) 
+        print(f"\tFetch information for missing genomes from NCBI Assembly directly.",
+            file=sys.stderr)
+        species_cont.get_missing_information()
+        print("\tDetermine the representative genomes of "
+            f"{species_cont.genomes.shape[0]} genomes present in the database",
+            file=sys.stderr)
+        species_cont.determine_representative_genomes()
+        print(f"\tIdentified {len(species_cont.representative_genomes)} genomes.\n"
+            "\tPrepare URL list for download of genomes from NCBI.", file=sys.stderr)
+        species_cont.write_url_list(Args['tmpdir'] + "/repgenomes_urls.txt")
+
+    if (not os.path.isfile(Args['tmpdir'] + "/done/download_representative_genomes") or
+        Args['force']):
+        print("\nDownload the representative genomes from NCBI\n", file=sys.stderr)
+        subprocess.run(f"snakemake -s {Args['snakemakedir']}/download_genomes.Snakefile "
+                       f"--configfile {Args['tmpdir']}/snakemake_config.json "
+                       "--restart-times 5 -k "
+                       f"-j {Args['threads']}", shell=True)
 
 # Argument parser
 Parser = argparse.ArgumentParser(description='Generate phylogenetic tree based '
@@ -97,6 +115,12 @@ Parser.add_argument('--tmpdir', required=True,
                     help='path to the folder for storing temporary output')
 Parser.add_argument('--databasedir', required=True,
                     help='path to folder "metaphlan_databases"')
+Parser.add_argument('--snakemakedir',
+                    help='folder with SnakeMake workflows [./snakemake]')
+Parser.add_argument('--threads', default=8,
+                    help='number of maximum threads to run Snakemake with [8]')
+Parser.add_argument('--force', action='store_true',
+                    help='ignore checkpoints and re-run all steps')
 Args = vars(Parser.parse_args())
 
 if __name__ == '__main__':
