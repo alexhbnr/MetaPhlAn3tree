@@ -8,18 +8,16 @@
 import argparse
 from glob import glob
 import os
+from pathlib import Path
 import re
 import subprocess
 import sys
 
-from src import species
+import pandas as pd
+import phylophlan.phylophlan as phylophlan
+
+from src import database, species
 from utils import config
-
-
-# Args = {'databasedir': '/projects1/users/huebner/miniconda3/envs/metaphlan2/bin/metaphlan_databases',
-        # 'metaphlanversion': 'latest',
-        # 'genbankurl': 'https://ftp.ncbi.nlm.nih.gov/genomes/genbank/assembly_summary_genbank.txt',
-        # 'tmpdir': '/projects1/users/huebner/tmp/metaphlantree'}
 
 
 def main():
@@ -99,6 +97,18 @@ def main():
                        f"--configfile {Args['tmpdir']}/snakemake_config.json "
                        "--restart-times 5 -k "
                        f"-j {Args['threads']}", shell=True)
+    
+    if (not os.path.isfile(Args['tmpdir'] + "/done/install_marker_database") or
+        Args['force']):
+        print("Prepare marker gene database of Segata et al. (2013) for tree "
+              "building", file=sys.stderr)
+        database.write_superconfig_aa(Args['tmpdir'])
+        phylophlan_config = database.load_check_config(Args['tmpdir'],
+                                                       Args['nproc'])
+        database.install_marker_database(Args['tmpdir'], phylophlan_config)
+        Path(Args['tmpdir'] + '/done/install_marker_database').touch(exist_ok=True)
+
+
 
 # Argument parser
 Parser = argparse.ArgumentParser(description='Generate phylogenetic tree based '
@@ -117,8 +127,8 @@ Parser.add_argument('--databasedir', required=True,
                     help='path to folder "metaphlan_databases"')
 Parser.add_argument('--snakemakedir',
                     help='folder with SnakeMake workflows [./snakemake]')
-Parser.add_argument('--threads', default=8,
-                    help='number of maximum threads to run Snakemake with [8]')
+Parser.add_argument('--nproc', default=8,
+                    help='number of maximum processors to run Snakemake with [8]')
 Parser.add_argument('--force', action='store_true',
                     help='ignore checkpoints and re-run all steps')
 Args = vars(Parser.parse_args())
