@@ -40,6 +40,7 @@ def main():
         os.makedirs(Args['tmpdir'] + "/cluster_logs", exist_ok=True)
         Args['cluster_cmd'] = f"--cluster-config {Args['tmpdir']}/snakemake_cluster.json --cluster '{Args['cluster_cmd']}'"
         Args['cluster_cmd'] += f" --resources cores={Args['max_resources']}"
+        Args['cluster_cmd'] += f" {Args['snakemake_args']}"
         print(Args['cluster_cmd'])
     else:
         Args['cluster_cmd'] = ''
@@ -165,6 +166,8 @@ Parser.add_argument('--cluster_cmd', default='sbatch --mem {cluster.mem} '
                     help="command provided to option '--cluster' of snakemake")
 Parser.add_argument('--max_resources', default = 160, type=int,
                     help='maximum number of CPUs to be used on cluster [160]')
+Parser.add_argument('--snakemake_args', default='',
+                    help='additional arguments to pass to Snakemake')
 Parser.add_argument('--nproc', default=8,
                     help='number of parallel jobs to submit to cluster; if '
                          '--local, number of maximum processors to run '
