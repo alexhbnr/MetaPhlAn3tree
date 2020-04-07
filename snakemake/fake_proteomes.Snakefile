@@ -170,7 +170,7 @@ rule marker_gene_extraction:
             with gzip.open(out_file, 'wt') as f:
                 SeqIO.write(out_file_seq, f, 'fasta')
 
-rule fake_proteomes:
+rule fake_proteome:
     input:
         "tmp/markers_dna/{gcaid}.fna.gz"
     output:
@@ -182,6 +182,8 @@ rule fake_proteomes:
         min_protein_length = 50
     threads: 1
     run:
+        # Function phylophlan.fake_proteome_rec without the overhead
+        # of the multiprocessing module
         inp, out, min_len_protein = (input[0], output[0], params.min_protein_length)
         proteome = []
         info('Generating "{}"\n'.format(inp))
