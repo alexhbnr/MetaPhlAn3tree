@@ -1,0 +1,15 @@
+{
+    "__default__" : {
+        "mem": 4000,
+        "partition": "short",
+        "time": "0-02:00"
+    },
+
+    "download_genome": {
+        "mem" : 2000
+    },
+
+    "gene_marker_selection": {
+        "mem" : 2000
+    }
+}

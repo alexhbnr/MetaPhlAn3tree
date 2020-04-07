@@ -39,6 +39,8 @@ def main():
     if not Args['local']:
         os.makedirs(Args['tmpdir'] + "/cluster_logs", exist_ok=True)
         Args['cluster_cmd'] = f"--cluster-config {Args['tmpdir']}/snakemake_cluster.json --cluster '{Args['cluster_cmd']}'"
+        Args['cluster_cmd'] += f" --resources cores={Args['max_resources']}"
+        print(Args['cluster_cmd'])
     else:
         Args['cluster_cmd'] = ''
 
@@ -109,7 +111,7 @@ def main():
                        f"-j {Args['nproc']}", shell=True,
                        stderr=open(Args['tmpdir'] +
                                    "/logs/snakemake-download_representative_genomes.log",
-                                   "wt"))
+                                   "at"))
     
     if (not os.path.isfile(Args['tmpdir'] + "/done/install_marker_database") or
         Args['force']):
@@ -121,16 +123,19 @@ def main():
         database.install_marker_database(Args['tmpdir'], phylophlan_config)
         Path(Args['tmpdir'] + '/done/install_marker_database').touch(exist_ok=True)
 
-    if (not os.path.isfile(Args['tmpdir'] + "/done/uncompress_fnas") or
+    if (not os.path.isfile(Args['tmpdir'] + "/done/fake_proteomes") or
         Args['force']):
-        print("Uncompress FastA files downloaded from NCBI", file=sys.stderr)
-        subprocess.run(f"snakemake -s {Args['snakemakedir']}/align_genomes.Snakefile "
+        print("Uncompress FastA files downloaded from NCBI, align against the "
+              "protein marker database of Segata et al. (2013) using DIAMOND "
+              "blastx, identify and extract marker genes, and translate into "
+              "amino acid sequences", file=sys.stderr)
+        subprocess.run(f"snakemake -s {Args['snakemakedir']}/fake_proteomes.Snakefile "
                        f"--configfile {Args['tmpdir']}/snakemake_config.json "
                        f"{Args['cluster_cmd']} "
                        "--restart-times 5 "
                        f"-j {Args['nproc']}", shell=True,
                        stderr=open(Args['tmpdir'] +
-                                   "/logs/snakemake-uncompress_fnas.log", "wt"))
+                                   "/logs/snakemake-fake_proteomes.log", "at"))
 
 
 # Argument parser
@@ -150,8 +155,6 @@ Parser.add_argument('--databasedir', required=True,
                     help='path to folder "metaphlan_databases"')
 Parser.add_argument('--snakemakedir',
                     help='folder with SnakeMake workflows [./snakemake]')
-Parser.add_argument('--nproc', default=8,
-                    help='number of maximum processors to run Snakemake with [8]')
 Parser.add_argument('--local', action='store_true',
                     help='do not submit PhyloPhlAn steps to cluster but run locally')
 Parser.add_argument('--cluster_cmd', default='sbatch --mem {cluster.mem} '
@@ -160,6 +163,12 @@ Parser.add_argument('--cluster_cmd', default='sbatch --mem {cluster.mem} '
                                              '-o {cluster.out} '
                                              '-e {cluster.err} -n {threads}',
                     help="command provided to option '--cluster' of snakemake")
+Parser.add_argument('--max_resources', default = 160, type=int,
+                    help='maximum number of CPUs to be used on cluster [160]')
+Parser.add_argument('--nproc', default=8,
+                    help='number of parallel jobs to submit to cluster; if '
+                         '--local, number of maximum processors to run '
+                         'Snakemake with [8]')
 Parser.add_argument('--force', action='store_true',
                     help='ignore checkpoints and re-run all steps')
 Args = vars(Parser.parse_args())
