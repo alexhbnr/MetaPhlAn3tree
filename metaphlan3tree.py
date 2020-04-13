@@ -138,6 +138,31 @@ def main():
                        stderr=open(Args['tmpdir'] +
                                    "/logs/snakemake-fake_proteomes.log", "at"))
 
+    if (not os.path.isfile(Args['tmpdir'] + "/done/protein_markers") or
+        Args['force']):
+        print("Clean the fake proteomes, align against the protein marker "
+              "database of Segata et al. (2013) using DIAMOND blastp, and "
+              "identify and extract marker gene sequences.", file=sys.stderr)
+        subprocess.run(f"snakemake -s {Args['snakemakedir']}/protein_markers.Snakefile "
+                       f"--configfile {Args['tmpdir']}/snakemake_config.json "
+                       f"{Args['cluster_cmd']} "
+                       "--restart-times 5 "
+                       f"-j {Args['nproc']}", shell=True,
+                       stderr=open(Args['tmpdir'] +
+                                   "/logs/snakemake-protein_markers.log", "at"))
+
+    if (not os.path.isfile(Args['tmpdir'] + "/done/alignment") or
+        Args['force']):
+        print("Identify the marker genes that are present at least in four "
+              "genomes and make alignments, trim non-variant sites and remove "
+              "samples consisting of >= 90% gaps", file=sys.stderr)
+        subprocess.run(f"snakemake -s {Args['snakemakedir']}/alignment.Snakefile "
+                       f"--configfile {Args['tmpdir']}/snakemake_config.json "
+                       f"{Args['cluster_cmd']} "
+                       "--restart-times 5 "
+                       f"-j {Args['nproc']}", shell=True,
+                       stderr=open(Args['tmpdir'] +
+                                   "/logs/snakemake-alignment.log", "at"))
 
 # Argument parser
 Parser = argparse.ArgumentParser(description='Generate phylogenetic tree based '
