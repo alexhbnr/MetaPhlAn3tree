@@ -11,5 +11,15 @@
 
     "gene_marker_selection": {
         "mem" : 2000
+    },
+    
+    "msas": {
+        "mem" : 16000
+    },
+
+    "trim_non_variant": {
+        "mem" : 8000,
+        "partition": "medium",
+        "time": "2-00:00"
     }
 }
