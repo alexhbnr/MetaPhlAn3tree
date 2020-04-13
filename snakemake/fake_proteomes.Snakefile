@@ -1,5 +1,7 @@
 ################################################################################
-# Uncompress the representatitve genomes downloaded from GenBank
+# Uncompress FastA files downloaded from NCBI, align against the protein marker
+# database of Segata et al. (2013) using DIAMOND blastx, identify and extract
+# marker genes, and translate into amino acid sequences
 #
 # Alex Huebner, 04/04/2020
 ################################################################################
