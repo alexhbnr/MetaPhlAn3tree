@@ -14,22 +14,23 @@ import phylophlan.phylophlan as phylophlan
 def write_superconfig_aa(tmpdir):
     """Generate supertree_aa config."""
     subprocess.run("phylophlan_write_config_file "
-                   f"-o {tmpdir}/supermatrix_aa.cfg "
+                   f"-o {tmpdir}/supertree_aa.cfg "
                    "-d a "
                    "--db_aa diamond "
                    "--map_dna diamond "
                    "--map_aa diamond "
                    "--msa mafft "
                    "--trim trimal "
-                   "--tree1 fasttree "
-                   "--tree2 raxml "
+                   "--gene_tree1 fasttree "
+                   "--gene_tree2 raxml "
+                   "--tree1 astral "
                    "--overwrite "
                    "--verbose", shell=True)
 
 
 def load_check_config(tmpdir, nproc):
     """Load and check supertree_aa config."""
-    configs = phylophlan.read_configs(tmpdir + "/supermatrix_aa.cfg",
+    configs = phylophlan.read_configs(tmpdir + "/supertree_aa.cfg",
                                       verbose=True)
     phylophlan.check_configs(configs, verbose=True)
     phylophlan.check_dependencies(configs, nproc, verbose=True)
