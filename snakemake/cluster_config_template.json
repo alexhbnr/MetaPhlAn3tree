@@ -21,5 +21,23 @@
         "mem" : 8000,
         "partition": "medium",
         "time": "2-00:00"
+    },
+
+    "gene_tree1": {
+        "mem" : 4000,
+        "partition": "medium",
+        "time": "2-00:00"
+    },
+
+    "gene_tree2": {
+        "mem" : 40000,
+        "partition": "long",
+        "time": "30-00:00"
+    },
+
+    "astral": {
+        "mem" : 500000,
+        "partition": "long",
+        "time": "30-00:00"
     }
 }
