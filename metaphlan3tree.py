@@ -9,14 +9,12 @@ import argparse
 from glob import glob
 import os
 from pathlib import Path
-import pickle
 import re
 import subprocess
 import sys
 
 from ete3 import Tree
 import pandas as pd
-import phylophlan.phylophlan as phylophlan
 
 from src import database, species
 from utils import config
@@ -51,13 +49,13 @@ def main():
 
     # Extract list of species from MetaPhlAn database pickle
     if (not os.path.isfile(Args['tmpdir'] + "/repgenomes_urls.txt") or
-        Args['force']):
+            Args['force']):
         print("1. Extract all species from MetaPhlAn database and prepare URLS "
               "for download from NCBI.", file=sys.stderr)
         if os.path.isdir(Args['databasedir']):
             db_versions = [re.search(r'mpa_v([0-9]+)_.+.pkl',
-                                    os.path.basename(db)).group(1)
-                        for db in glob(f"{Args['databasedir']}/*.pkl")]
+                                     os.path.basename(db)).group(1)
+                           for db in glob(f"{Args['databasedir']}/*.pkl")]
             db_versions.sort()
             if Args['metaphlanversion'] == 'latest':
                 db_version = db_versions[-1]
@@ -65,51 +63,51 @@ def main():
                 db_version = Args['metaphlanversion'].replace("v", "")
             else:
                 print(f"The database version {Args['metaphlanversion']} is not "
-                    f"present in the database directory {Args['databasedir']}. "
-                    "The following database versions are currently available: "
-                    f"{', '.join(['v' + db for db in db_versions])}. Either "
-                    "pick from the available or download the database using "
-                    "MetaPhlAn.",
-                    file=sys.stderr)
+                      f"present in the database directory {Args['databasedir']}. "
+                      "The following database versions are currently available: "
+                      f"{', '.join(['v' + db for db in db_versions])}. Either "
+                      "pick from the available or download the database using "
+                      "MetaPhlAn.",
+                      file=sys.stderr)
                 sys.exit(1)
             species_cont = species.Species(db_version, Args['databasedir'])
             print("\tExtract the strain information from the MetaPhlAn database",
-                file=sys.stderr)
+                  file=sys.stderr)
             species_cont.extract_strains()
         else:
             print(f'The directory {Args["databasedir"]} does not exist. Specify a '
-                'valid directory that contains the MetaPhlAn databases.',
-                file=sys.stderr)
+                  'valid directory that contains the MetaPhlAn databases.',
+                  file=sys.stderr)
             sys.exit(1)
 
         # Download the overview of RefSeq genomes and join information with genomes
         print("\tDownload the GCA assembly summary from NCBI\n",
-            file=sys.stderr)
+              file=sys.stderr)
         if not os.path.isdir(Args['tmpdir']):
             os.makedirs(Args['tmpdir'])
         subprocess.run(f'cd  {Args["tmpdir"]} && wget -N -nH '
-                        '--user-agent=Mozilla/5.0 --relative -r --no-parent '
-                        '--reject "index.html*" --cut-dirs=2 -e robots=off '
-                        f'{Args["genbankurl"]}', shell=True)
+                       '--user-agent=Mozilla/5.0 --relative -r --no-parent '
+                       '--reject "index.html*" --cut-dirs=2 -e robots=off '
+                       f'{Args["genbankurl"]}', shell=True)
         print("\tJoin the GCA assembly summary information with the MetaPhlAn "
-            "database information", file=sys.stderr)
+              "database information", file=sys.stderr)
         species_cont.join_genbank(Args['tmpdir'] + "/" +
-                                os.path.basename(Args['genbankurl'])) 
+                                os.path.basename(Args['genbankurl']))
         print(f"\tFetch information for missing genomes from NCBI Assembly directly.",
-            file=sys.stderr)
+              file=sys.stderr)
         species_cont.get_missing_information()
         print("\tDetermine the representative genomes of "
-            f"{species_cont.genomes.shape[0]} genomes present in the database",
-            file=sys.stderr)
+              f"{species_cont.genomes.shape[0]} genomes present in the database",
+              file=sys.stderr)
         species_cont.determine_representative_genomes()
         print(f"\tIdentified {len(species_cont.representative_genomes)} genomes.\n"
-            "\tPrepare URL list for download of genomes from NCBI.", file=sys.stderr)
+              "\tPrepare URL list for download of genomes from NCBI.", file=sys.stderr)
         species_cont.write_url_list(Args['tmpdir'] + "/repgenomes_urls.txt")
-        with open(Args['tmpdir'] + "/species_cont.pkl", "w") as pklfile:
-            pickle.dump(species_cont, pklfile)
+        species_cont.genomes.to_csv(Args['tmpdir'] + "/genomes.tsv", sep="\t",
+                                    index=False)
 
     if (not os.path.isfile(Args['tmpdir'] + "/done/download_representative_genomes") or
-        Args['force']):
+            Args['force']):
         print("\nDownload the representative genomes from NCBI\n", file=sys.stderr)
         subprocess.run(f"snakemake -s {Args['snakemakedir']}/download_genomes.Snakefile "
                        f"--configfile {Args['tmpdir']}/snakemake_config.json "
@@ -119,9 +117,9 @@ def main():
                        stderr=open(Args['tmpdir'] +
                                    "/logs/snakemake-download_representative_genomes.log",
                                    "at"))
-    
+
     if (not os.path.isfile(Args['tmpdir'] + "/done/install_marker_database") or
-        Args['force']):
+            Args['force']):
         print("Prepare marker gene database of Segata et al. (2013) for tree "
               "building", file=sys.stderr)
         database.write_superconfig_aa(Args['tmpdir'])
@@ -131,7 +129,7 @@ def main():
         Path(Args['tmpdir'] + '/done/install_marker_database').touch(exist_ok=True)
 
     if (not os.path.isfile(Args['tmpdir'] + "/done/fake_proteomes") or
-        Args['force']):
+            Args['force']):
         print("Uncompress FastA files downloaded from NCBI, align against the "
               "protein marker database of Segata et al. (2013) using DIAMOND "
               "blastx, identify and extract marker genes, and translate into "
@@ -145,7 +143,7 @@ def main():
                                    "/logs/snakemake-fake_proteomes.log", "at"))
 
     if (not os.path.isfile(Args['tmpdir'] + "/done/protein_markers") or
-        Args['force']):
+            Args['force']):
         print("Clean the fake proteomes, align against the protein marker "
               "database of Segata et al. (2013) using DIAMOND blastp, and "
               "identify and extract marker gene sequences.", file=sys.stderr)
@@ -158,7 +156,7 @@ def main():
                                    "/logs/snakemake-protein_markers.log", "at"))
 
     if (not os.path.isfile(Args['tmpdir'] + "/done/alignment") or
-        Args['force']):
+            Args['force']):
         print("Identify the marker genes that are present at least in four "
               "genomes and make alignments, trim non-variant sites and remove "
               "samples consisting of >= 90% gaps", file=sys.stderr)
@@ -199,18 +197,18 @@ def main():
     if (not os.path.isfile(Args['output']) or Args['force']):
         print("Annotate the tree with taxonomic information and write to output "
               "file.", file=sys.stderr)
-        with open(Args['tmpdir'] + "/species_cont.pkl", "rb") as pfile:
-            species_cont = pickle.load(pfile)
+        tree_annot_df = pd.read_csv(Args['tmpdir'] + "/genomes.tsv",
+                                    sep="\t")[['kingdom', 'phylum', 'class',
+                                               'order', 'family', 'genus',
+                                               'species', 'GCAid']]
+
         # Prepare identifiers for annotation
-            def concat(r):
-                prefices = ['kingdom', 'phylum', 'class', 'order',
-                            'family', 'genus', 'species', 't']
-                return "|".join([f'{p[0]}__{u}' for p, u in zip(prefices, r)])
-            tree_annot_df = species_cont.genomes[['kingdom', 'phylum',
-                                              'class', 'order', 'family',
-                                              'genus', 'species', 'GCAid']]
-            tree_annot_df['label'] = tree_annot_df.apply(lambda r: concat(r), axis=1)
-            tree_annot_df = tree_annot_df.set_index(['GCAid'])
+        def concat(r):
+            prefices = ['kingdom', 'phylum', 'class', 'order',
+                        'family', 'genus', 'species', 't']
+            return "|".join([f'{p[0]}__{u}' for p, u in zip(prefices, r)])
+        tree_annot_df['label'] = tree_annot_df.apply(lambda r: concat(r), axis=1)
+        tree_annot_df = tree_annot_df.set_index(['GCAid'])
 
         if Args['skip_redefining']:
             treefn = Args['tmpdir'] + "/MetaPhlAn3tree.FastTree_Astral.tre"
@@ -219,8 +217,7 @@ def main():
         tre = Tree(open(treefn, "rt").readline())
         for l in tre.iter_leaves():
             l.name = tree_annot_df.loc[l.name.replace(".faa", ""), 'label']
-        with open(Args['output'], 'wt') as outfile:
-            tre.write(outfile=Args['output'])
+        tre.write(outfile=Args['output'])
     else:
         print(f"The tree output file {Args['output']} already exists and the "
               "option '--force' has not been enabled to re-run it. Activate "
