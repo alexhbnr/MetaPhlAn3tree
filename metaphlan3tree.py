@@ -9,10 +9,12 @@ import argparse
 from glob import glob
 import os
 from pathlib import Path
+import pickle
 import re
 import subprocess
 import sys
 
+from ete3 import Tree
 import pandas as pd
 import phylophlan.phylophlan as phylophlan
 
@@ -103,6 +105,8 @@ def main():
         print(f"\tIdentified {len(species_cont.representative_genomes)} genomes.\n"
             "\tPrepare URL list for download of genomes from NCBI.", file=sys.stderr)
         species_cont.write_url_list(Args['tmpdir'] + "/repgenomes_urls.txt")
+        with open(Args['tmpdir'] + "/species_cont.pkl", "w") as pklfile:
+            pickle.dump(species_cont, pklfile)
 
     if (not os.path.isfile(Args['tmpdir'] + "/done/download_representative_genomes") or
         Args['force']):
@@ -168,7 +172,7 @@ def main():
 
     if Args['skip_redefining']:
         if (not os.path.isfile(Args['tmpdir'] + "/done/simple_tree") or
-            Args['force']):
+                Args['force']):
             print("Build gene trees using FastTree, and generate single tree "
                   "using ASTRAL.", file=sys.stderr)
             subprocess.run(f"snakemake -s {Args['snakemakedir']}/simple_tree.Snakefile "
@@ -180,7 +184,7 @@ def main():
                                        "/logs/snakemake-tree.log", "at"))
     else:
         if (not os.path.isfile(Args['tmpdir'] + "/done/tree") or
-            Args['force']):
+                Args['force']):
             print("Build gene trees using FastTree, resolve polytomies using "
                   "DendroPy, re-define trees using RAxML, and generate single "
                   "tree using ASTRAL.", file=sys.stderr)
@@ -191,6 +195,38 @@ def main():
                            f"-j {Args['nproc']}", shell=True,
                            stderr=open(Args['tmpdir'] +
                                        "/logs/snakemake-tree.log", "at"))
+
+    if (not os.path.isfile(Args['output']) or Args['force']):
+        print("Annotate the tree with taxonomic information and write to output "
+              "file.", file=sys.stderr)
+        with open(Args['tmpdir'] + "/species_cont.pkl", "rb") as pfile:
+            species_cont = pickle.load(pfile)
+        # Prepare identifiers for annotation
+            def concat(r):
+                prefices = ['kingdom', 'phylum', 'class', 'order',
+                            'family', 'genus', 'species', 't']
+                return "|".join([f'{p[0]}__{u}' for p, u in zip(prefices, r)])
+            tree_annot_df = species_cont.genomes[['kingdom', 'phylum',
+                                              'class', 'order', 'family',
+                                              'genus', 'species', 'GCAid']]
+            tree_annot_df['label'] = tree_annot_df.apply(lambda r: concat(r), axis=1)
+            tree_annot_df = tree_annot_df.set_index(['GCAid'])
+
+        if Args['skip_redefining']:
+            treefn = Args['tmpdir'] + "/MetaPhlAn3tree.FastTree_Astral.tre"
+        else:
+            treefn = Args['tmpdir'] + "/MetaPhlAn3tree.RAxML_Astral.tre"
+        tre = Tree(open(treefn, "rt").readline())
+        for l in tre.iter_leaves():
+            l.name = tree_annot_df.loc[l.name.replace(".faa", ""), 'label']
+        with open(Args['output'], 'wt') as outfile:
+            tre.write(outfile=Args['output'])
+    else:
+        print(f"The tree output file {Args['output']} already exists and the "
+              "option '--force' has not been enabled to re-run it. Activate "
+              "this option to re-run all steps or remove the output file prior "
+              "to running the script.", file=sys.stderr)
+        sys.exit(1)
 
 # Argument parser
 Parser = argparse.ArgumentParser(description='Generate phylogenetic tree based '
