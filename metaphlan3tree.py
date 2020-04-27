@@ -33,8 +33,10 @@ def main():
     config.argparse_to_json(Args)
     if Args['snakemakedir'] is None:
         Args['snakemakedir'] = os.path.dirname(os.path.realpath(__file__)) + "/snakemake"
+    if Args['clusterconfig_template'] is None:
+        Args['clusterconfig_template'] = Args['snakemakedir'] + "/cluster_config_template.json"
     config.argparse_to_clusterconfig(Args,
-                                     Args['snakemakedir'] + "/cluster_config_template.json")
+                                     Args['clusterconfig_template'])
     os.makedirs(Args['tmpdir'] + "/logs", exist_ok=True)
     if not Args['local']:
         os.makedirs(Args['tmpdir'] + "/cluster_logs", exist_ok=True)
@@ -166,7 +168,9 @@ def main():
 
     if (not os.path.isfile(Args['tmpdir'] + "/done/tree") or
         Args['force']):
-        print("Build gene trees using FastTree", file=sys.stderr)
+        print("Build gene trees using FastTree, resolve polytomies using "
+              "DendroPy, re-define trees using RAxML, and generate single "
+              "tree using ASTRAL.", file=sys.stderr)
         subprocess.run(f"snakemake -s {Args['snakemakedir']}/tree.Snakefile "
                        f"--configfile {Args['tmpdir']}/snakemake_config.json "
                        f"{Args['cluster_cmd']} "
@@ -194,6 +198,9 @@ Parser.add_argument('--snakemakedir',
                     help='folder with SnakeMake workflows [./snakemake]')
 Parser.add_argument('--local', action='store_true',
                     help='do not submit PhyloPhlAn steps to cluster but run locally')
+Parser.add_argument('--clusterconfig_template',
+                    help='path to the cluster-config template JSON file '
+                    '[./snakemake/cluster_config_template.json]')
 Parser.add_argument('--cluster_cmd', default='sbatch --mem {cluster.mem} '
                                              '-p {cluster.partition} '
                                              '-t {cluster.time} '
