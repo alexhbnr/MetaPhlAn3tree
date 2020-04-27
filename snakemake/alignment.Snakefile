@@ -39,7 +39,7 @@ rule all:
         "done/alignment"
 
 rule create_checkpoint:
-    input: 
+    input:
         evaluate_no_markers
     output:
         touch("done/alignment")
@@ -128,7 +128,8 @@ rule trim_non_variant:
 
         def evaluate_nonvariant(site):
             sitefreq = site.frequencies()
-            del sitefreq['-']
+            if "-" in sitefreq:
+                del sitefreq['-']
             nongap_samples = sum(sitefreq.values())
             remove_site = [(count / nongap_samples) >= params.non_variant_threshold
                            for aa, count in sitefreq.items()]
@@ -139,7 +140,7 @@ rule trim_non_variant:
         if np.sum(nonvariant_sites) < aln.shape[1]:
             aln.loc[:, nonvariant_sites].write(out, "fasta")
         elif verbose:
-                info('"{}" discarded because no columns retained while removing not variant sites (thr: {})\n'.format(inp, thr))
+            info('"{}" discarded because no columns retained while removing not variant sites (thr: {})\n'.format(inp, thr))
 
 rule remove_fragmentary_entries:
     input:
@@ -167,4 +168,3 @@ rule remove_fragmentary_entries:
             inp_aln[gap_frequencies < frag_thr, :].write(out, "fasta")
         else:
             Path(out).touch()
-
