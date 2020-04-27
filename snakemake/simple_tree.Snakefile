@@ -1,7 +1,7 @@
 ################################################################################
+# Build gene trees using FastTree, and generate single tree using ASTRAL.
 #
-#
-# Alex Huebner, 
+# Alex Huebner, 27/04/2020
 ################################################################################
 
 import os
@@ -36,6 +36,7 @@ rule gene_tree1:
         "tmp/gene_tree1/{marker}.tre"
     message: "Build initial gene tree for marker {wildcards.marker} using FastTree"
     params:
+        condaenv = config['condaenv'] + '/etc/profile.d/conda.sh',
         aln = "tmp/fragmentary/{marker}.aln",
     resources:
         cores = 8
@@ -43,7 +44,7 @@ rule gene_tree1:
     shell:
         """
         set +u
-        source /projects1/users/huebner/miniconda3/etc/profile.d/conda.sh
+        source {params.condaenv}
         conda activate phylophlan
         set -u
         export OMP_NUM_THREADS={threads}
@@ -77,13 +78,14 @@ rule astral:
     message: "Summarise FastTree trees using Astral"
     resources:
         cores = 1
+    params:
+        condaenv = config['condaenv'] + '/etc/profile.d/conda.sh'
     threads: 1
     shell:
         """
         set +u
-        source /projects1/users/huebner/miniconda3/etc/profile.d/conda.sh
+        source {params.condaenv}
         conda activate phylophlan
         set -u
-        source /projects1/profiles/etc/shh_default
         java -Xmx400g -jar ${{CONDA_PREFIX}}/bin/astral.5.7.1.jar -i {input} -o {output}
         """

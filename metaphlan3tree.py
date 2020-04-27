@@ -166,18 +166,31 @@ def main():
                        stderr=open(Args['tmpdir'] +
                                    "/logs/snakemake-alignment.log", "at"))
 
-    if (not os.path.isfile(Args['tmpdir'] + "/done/tree") or
-        Args['force']):
-        print("Build gene trees using FastTree, resolve polytomies using "
-              "DendroPy, re-define trees using RAxML, and generate single "
-              "tree using ASTRAL.", file=sys.stderr)
-        subprocess.run(f"snakemake -s {Args['snakemakedir']}/tree.Snakefile "
-                       f"--configfile {Args['tmpdir']}/snakemake_config.json "
-                       f"{Args['cluster_cmd']} "
-                       "--restart-times 5 "
-                       f"-j {Args['nproc']}", shell=True,
-                       stderr=open(Args['tmpdir'] +
-                                   "/logs/snakemake-tree.log", "at"))
+    if Args['skip_redefining']:
+        if (not os.path.isfile(Args['tmpdir'] + "/done/simple_tree") or
+            Args['force']):
+            print("Build gene trees using FastTree, and generate single tree "
+                  "using ASTRAL.", file=sys.stderr)
+            subprocess.run(f"snakemake -s {Args['snakemakedir']}/simple_tree.Snakefile "
+                           f"--configfile {Args['tmpdir']}/snakemake_config.json "
+                           f"{Args['cluster_cmd']} "
+                           "--restart-times 5 "
+                           f"-j {Args['nproc']}", shell=True,
+                           stderr=open(Args['tmpdir'] +
+                                       "/logs/snakemake-tree.log", "at"))
+    else:
+        if (not os.path.isfile(Args['tmpdir'] + "/done/tree") or
+            Args['force']):
+            print("Build gene trees using FastTree, resolve polytomies using "
+                  "DendroPy, re-define trees using RAxML, and generate single "
+                  "tree using ASTRAL.", file=sys.stderr)
+            subprocess.run(f"snakemake -s {Args['snakemakedir']}/tree.Snakefile "
+                           f"--configfile {Args['tmpdir']}/snakemake_config.json "
+                           f"{Args['cluster_cmd']} "
+                           "--restart-times 5 "
+                           f"-j {Args['nproc']}", shell=True,
+                           stderr=open(Args['tmpdir'] +
+                                       "/logs/snakemake-tree.log", "at"))
 
 # Argument parser
 Parser = argparse.ArgumentParser(description='Generate phylogenetic tree based '
@@ -194,6 +207,9 @@ Parser.add_argument('--tmpdir', required=True,
                     help='path to the folder for storing temporary output')
 Parser.add_argument('--databasedir', required=True,
                     help='path to folder "metaphlan_databases"')
+Parser.add_argument('--skip_redefining', action='store_true',
+                    help='skip removing polytomies and re-defining the gene '
+                    'trees using RAxML')
 Parser.add_argument('--snakemakedir',
                     help='folder with SnakeMake workflows [./snakemake]')
 Parser.add_argument('--local', action='store_true',
