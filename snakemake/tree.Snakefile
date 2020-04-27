@@ -1,13 +1,15 @@
 ################################################################################
+# Build gene trees using FastTree, resolve polytomies using DendroPy, re-define
+# trees using RAxML, and generate single tree using ASTRAL.
 #
-#
-# Alex Huebner, 
+# Alex Huebner, 27/04/20
 ################################################################################
 
 import os
 import sys
 
 import dendropy
+from Bio import SeqIO
 import phylophlan.phylophlan as phylophlan
 from phylophlan.phylophlan import info, error
 
@@ -20,6 +22,11 @@ sub_mod = phylophlan.load_substitution_model(os.path.dirname(phylophlan.__file__
 # Marker alignments
 MARKERS, = glob_wildcards("tmp/fragmentary/{marker}.aln")
 MARKERS = [marker for marker in MARKERS if os.path.getsize(f"tmp/fragmentary/{marker}.aln") > 0]
+MARKERS = [marker for marker in MARKERS
+           if len(list(SeqIO.parse(open(f"tmp/fragmentary/{marker}.aln", "rt"), "fasta"))) > 3]
+print(f"Number of markers: {len(MARKERS)}")
+
+localrules: astral
 
 rule all:
     input:
@@ -27,7 +34,7 @@ rule all:
 
 rule create_checkpoint:
     input: 
-        expand("tmp/gene_tree2/{marker}.tre", marker=MARKERS)
+        "MetaPhlAn3tree.RAxML_Astral.tre"
     output:
         touch("done/tree")
 
@@ -36,6 +43,7 @@ rule gene_tree1:
         "tmp/gene_tree1/{marker}.tre"
     message: "Build initial gene tree for marker {wildcards.marker} using FastTree"
     params:
+        condaenv = config['condaenv'] + '/etc/profile.d/conda.sh',
         aln = "tmp/fragmentary/{marker}.aln",
     resources:
         cores = 8
@@ -43,7 +51,7 @@ rule gene_tree1:
     shell:
         """
         set +u
-        source /projects1/users/huebner/miniconda3/etc/profile.d/conda.sh
+        source {params.condaenv}
         conda activate phylophlan
         set -u
         export OMP_NUM_THREADS={threads}
@@ -82,20 +90,57 @@ rule gene_tree2:
     resources:
         cores = 9
     params:
+        condaenv = config['condaenv'] + '/etc/profile.d/conda.sh',
         aln = "tmp/fragmentary/{marker}.aln",
-        workdir = f"{os.path.abspath(config['tmpdir'])}/tmp/gene_tree2"
+        wdir = f"{os.path.abspath(config['tmpdir'])}/tmp/gene_tree2"
     threads: 8
     shell:
         """
         set +u
-        source /projects1/users/huebner/miniconda3/etc/profile.d/conda.sh
+        source {params.condaenv}
         conda activate phylophlan
         set -u
+        for f in info log result; do
+            if [[ -f {params.wdir}/RAxML_${{f}}.{wildcards.marker}.tre ]]; then
+                rm {params.wdir}/RAxML_${{f}}.{wildcards.marker}.tre
+            fi
+        done
         raxmlHPC-PTHREADS-SSE3 -m PROTCATLG -p 1989 \
             -t {input} \
-            -w {params.workdir} \
+            -w {params.wdir} \
             -s {params.aln} \
             -n {wildcards.marker}.tre \
             -T {threads}
-        ln -s {params.workdir}/RAxML_bestTree.{wildcards.marker}.tre {output}
+        ln -s {params.wdir}/RAxML_bestTree.{wildcards.marker}.tre {output}
+        """
+
+rule merging_gene_trees:
+    input:
+        expand("tmp/gene_tree2/{marker}.tre", marker=MARKERS)
+    output:
+        "tmp/gene_trees_RAxML.tre"
+    message: "Concatenate all RAxML tree files into a single one"
+    params:
+        dir = "tmp/gene_tree2"
+    run:
+        phylophlan.merging_gene_trees(params.dir, output[0], verbose=True)
+
+rule astral:
+    input:
+        "tmp/gene_trees_RAxML.tre"
+    output:
+        "MetaPhlAn3tree.RAxML_Astral.tre"
+    message: "Summarise RAxML trees using Astral"
+    resources:
+        cores = 1
+    params:
+        condaenv = config['condaenv'] + '/etc/profile.d/conda.sh',
+    threads: 1
+    shell:
+        """
+        set +u
+        source {params.condaenv}
+        conda activate phylophlan
+        set -u
+        java -Xmx400g -jar ${{CONDA_PREFIX}}/bin/astral.5.7.1.jar -i {input} -o {output}
         """
