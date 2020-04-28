@@ -23,7 +23,6 @@ def write_superconfig_aa(tmpdir):
                    "--trim trimal "
                    "--gene_tree1 fasttree "
                    "--gene_tree2 raxml "
-                   "--tree1 astral "
                    "--overwrite "
                    "--verbose", shell=True)
 
