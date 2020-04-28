@@ -17,7 +17,7 @@ from ete3 import Tree
 import pandas as pd
 
 from src import database, species
-from utils import config
+from utils import config, errormessages
 
 
 def main():
@@ -123,6 +123,11 @@ def main():
                        stderr=open(Args['tmpdir'] +
                                    "/logs/snakemake-download_representative_genomes.log",
                                    "at"))
+        if not os.path.isfile(Args['tmpdir'] +
+                              "/done/download_representative_genomes"):
+            errormessages.print_errormessage("download_representative_genomes",
+                                             Args['tmpdir'])
+            sys.exit(1)
 
     if (not os.path.isfile(Args['tmpdir'] + "/done/install_marker_database") or
             Args['force']):
@@ -147,6 +152,10 @@ def main():
                        f"-j {Args['nproc']}", shell=True,
                        stderr=open(Args['tmpdir'] +
                                    "/logs/snakemake-fake_proteomes.log", "at"))
+        if not os.path.isfile(Args['tmpdir'] +
+                              "/done/fake_proteomes"):
+            errormessages.print_errormessage("fake_proteomes", Args['tmpdir'])
+            sys.exit(1)
 
     if (not os.path.isfile(Args['tmpdir'] + "/done/protein_markers") or
             Args['force']):
@@ -160,6 +169,10 @@ def main():
                        f"-j {Args['nproc']}", shell=True,
                        stderr=open(Args['tmpdir'] +
                                    "/logs/snakemake-protein_markers.log", "at"))
+        if not os.path.isfile(Args['tmpdir'] +
+                              "/done/protein_markers"):
+            errormessages.print_errormessage("protein_markers", Args['tmpdir'])
+            sys.exit(1)
 
     if (not os.path.isfile(Args['tmpdir'] + "/done/alignment") or
             Args['force']):
@@ -173,6 +186,10 @@ def main():
                        f"-j {Args['nproc']}", shell=True,
                        stderr=open(Args['tmpdir'] +
                                    "/logs/snakemake-alignment.log", "at"))
+        if not os.path.isfile(Args['tmpdir'] +
+                              "/done/alignment"):
+            errormessages.print_errormessage("alignment", Args['tmpdir'])
+            sys.exit(1)
 
     if Args['skip_redefining']:
         if (not os.path.isfile(Args['tmpdir'] + "/done/simple_tree") or
@@ -185,7 +202,11 @@ def main():
                            "--restart-times 5 "
                            f"-j {Args['nproc']}", shell=True,
                            stderr=open(Args['tmpdir'] +
-                                       "/logs/snakemake-tree.log", "at"))
+                                       "/logs/snakemake-simple_tree.log", "at"))
+        if not os.path.isfile(Args['tmpdir'] +
+                              "/done/simple_tree"):
+            errormessages.print_errormessage("simple_tree", Args['tmpdir'])
+            sys.exit(1)
     else:
         if (not os.path.isfile(Args['tmpdir'] + "/done/tree") or
                 Args['force']):
@@ -199,6 +220,9 @@ def main():
                            f"-j {Args['nproc']}", shell=True,
                            stderr=open(Args['tmpdir'] +
                                        "/logs/snakemake-tree.log", "at"))
+        if not os.path.isfile(Args['tmpdir'] + "/done/tree"):
+            errormessages.print_errormessage("tree", Args['tmpdir'])
+            sys.exit(1)
 
     if (not os.path.isfile(Args['output']) or Args['force']):
         print("Annotate the tree with taxonomic information and write to output "
