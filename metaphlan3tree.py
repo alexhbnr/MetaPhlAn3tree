@@ -92,13 +92,19 @@ def main():
         print("\tJoin the GCA assembly summary information with the MetaPhlAn "
               "database information", file=sys.stderr)
         species_cont.join_genbank(Args['tmpdir'] + "/" +
-                                os.path.basename(Args['genbankurl']))
+                                  os.path.basename(Args['genbankurl']))
         print(f"\tFetch information for missing genomes from NCBI Assembly directly.",
               file=sys.stderr)
         species_cont.get_missing_information()
         print("\tDetermine the representative genomes of "
               f"{species_cont.genomes.shape[0]} genomes present in the database",
               file=sys.stderr)
+        if Args['taxnames'] is None:
+            taxnames = []
+        else:
+            taxnames = [line.rstrip().replace("s__", "")
+                        for line in open(Args['taxnames'], 'rt')]
+        species_cont.subset_taxa(taxnames)
         species_cont.determine_representative_genomes()
         print(f"\tIdentified {len(species_cont.representative_genomes)} genomes.\n"
               "\tPrepare URL list for download of genomes from NCBI.", file=sys.stderr)
@@ -240,6 +246,9 @@ Parser.add_argument('--tmpdir', required=True,
                     help='path to the folder for storing temporary output')
 Parser.add_argument('--databasedir', required=True,
                     help='path to folder "metaphlan_databases"')
+Parser.add_argument('--taxnames',
+                    help='subset tree building to species names listed in file;'
+                    ' one species name per line')
 Parser.add_argument('--skip_redefining', action='store_true',
                     help='skip removing polytomies and re-defining the gene '
                     'trees using RAxML')
@@ -256,7 +265,7 @@ Parser.add_argument('--cluster_cmd', default='sbatch --mem {cluster.mem} '
                                              '-o {cluster.out} '
                                              '-e {cluster.err} -n {threads}',
                     help="command provided to option '--cluster' of snakemake")
-Parser.add_argument('--max_resources', default = 160, type=int,
+Parser.add_argument('--max_resources', default=160, type=int,
                     help='maximum number of CPUs to be used on cluster [160]')
 Parser.add_argument('--snakemake_args', default='',
                     help='additional arguments to pass to Snakemake')
