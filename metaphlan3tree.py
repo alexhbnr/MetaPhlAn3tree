@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 ###############################################################################
-# 
-#
-# Alex Huebner, 02/04/2020
-###############################################################################
+
+__author__ = ('Alexander Huebner (alexhbnr@gmail.com)')
+__version__ = '0.1'
+__date__ = '28 April 2020'
 
 import argparse
 from glob import glob
