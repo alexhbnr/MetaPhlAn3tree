@@ -28,6 +28,12 @@ def main():
        distances based on underlying phylogenetic information such as UniFrac
        or PhILR.
     """
+    if Args['clean']:
+        print(f"Clear the temporary output directory {Args['tmpdir']}",
+              file=sys.stderr)
+        subprocess.run(f"rm -r {Args['tmpdir']}", shell=True)
+        sys.exit(0)
+
     # Configure snakemake execution
     print("Configure Snakemake for execution.")
     config.argparse_to_json(Args)
@@ -43,7 +49,7 @@ def main():
         Args['cluster_cmd'] = f"--cluster-config {Args['tmpdir']}/snakemake_cluster.json --cluster '{Args['cluster_cmd']}'"
         Args['cluster_cmd'] += f" --resources cores={Args['max_resources']}"
         Args['cluster_cmd'] += f" {Args['snakemake_args']}"
-        print(Args['cluster_cmd'])
+        print(f'Cluster command: {Args['cluster_cmd']}', file=sys.stderr)
     else:
         Args['cluster_cmd'] = ''
 
@@ -299,6 +305,8 @@ Parser.add_argument('--nproc', default=8,
                          'Snakemake with [8]')
 Parser.add_argument('--force', action='store_true',
                     help='ignore checkpoints and re-run all steps')
+Parser.add_argument('--clean', action='store_true',
+                    help='remove all temporary output')
 Args = vars(Parser.parse_args())
 
 if __name__ == '__main__':

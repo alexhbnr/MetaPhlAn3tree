@@ -2,8 +2,6 @@
 # Clean the fake proteomes, align against the protein marker database of Segata
 # et al. (2013) using DIAMOND blastp, and identify and extract marker gene
 # sequences.
-#
-# Alex Huebner, 07/04/2020
 ################################################################################
 
 import gzip
@@ -62,8 +60,7 @@ rule diamond_blastp:
     input:
         "tmp/clean_aa/{gcaid}.fasta"
     output:
-        #temp("tmp/map_aa/{gcaid}.b6o.bkp")
-        "tmp/map_aa/{gcaid}.b6o.bkp"
+        temp("tmp/map_aa/{gcaid}.b6o.bkp")
     message: "Align genome {wildcards.gcaid} against protein database using BLASTP"
     resources:
         cores = 8
@@ -93,7 +90,7 @@ rule gene_marker_selection:
     input:
         "tmp/map_aa/{gcaid}.b6o.bkp"
     output:
-        "tmp/map_aa/{gcaid}.b6o"
+        temp("tmp/map_aa/{gcaid}.b6o")
     message: "Select gene markers for genome {wildcards.gcaid}"
     resources:
         cores = 1

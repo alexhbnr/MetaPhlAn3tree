@@ -2,8 +2,6 @@
 # Identify the marker genes that are present at least in four genomes and make
 # alignments, trim non-variant sites and remove samples consisting of >= 90%
 # gaps
-#
-# Alex Huebner, 10/04/2020
 ################################################################################
 
 from collections import Counter
@@ -112,7 +110,7 @@ rule trim_non_variant:
     input:
         "tmp/msas/{marker}.aln"
     output:
-        "tmp/trim_non_variant/{marker}.aln"
+        temp("tmp/trim_non_variant/{marker}.aln")
     message: "Trim non-variant sites from marker {wildcards.marker}"
     resources:
         cores = 1

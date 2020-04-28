@@ -1,8 +1,6 @@
 ################################################################################
 # Build gene trees using FastTree, resolve polytomies using DendroPy, re-define
 # trees using RAxML, and generate single tree using ASTRAL.
-#
-# Alex Huebner, 27/04/20
 ################################################################################
 
 import os
@@ -88,7 +86,7 @@ rule gene_tree2:
         "tmp/gene_tree2/{marker}.tre"
     message: "Redefine tree of marker {wildcards.marker} using RAxML"
     resources:
-        cores = 9
+        cores = 8
     params:
         condaenv = config['condaenv'] + '/etc/profile.d/conda.sh',
         aln = "tmp/fragmentary/{marker}.aln",

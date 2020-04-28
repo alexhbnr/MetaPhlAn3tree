@@ -2,8 +2,6 @@
 # Uncompress FastA files downloaded from NCBI, align against the protein marker
 # database of Segata et al. (2013) using DIAMOND blastx, identify and extract
 # marker genes, and translate into amino acid sequences
-#
-# Alex Huebner, 04/04/2020
 ################################################################################
 
 import gzip
@@ -13,6 +11,7 @@ from Bio.SeqIO.FastaIO import SimpleFastaParser
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from phylophlan.phylophlan import info, error
+from phylophlan import phylophlan
 
 workdir: config['tmpdir']
 
