@@ -1,7 +1,5 @@
 ###############################################################################
 # Download the PhyloPhlAn database used by Segata et al. (2013)
-#
-# Alex Huebner, 04/04/2020
 ###############################################################################
 
 import os
@@ -23,6 +21,7 @@ def write_superconfig_aa(tmpdir):
                    "--trim trimal "
                    "--gene_tree1 fasttree "
                    "--gene_tree2 raxml "
+                   "--tree1 raxml "
                    "--overwrite "
                    "--verbose", shell=True)
 
