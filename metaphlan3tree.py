@@ -49,7 +49,7 @@ def main():
         Args['cluster_cmd'] = f"--cluster-config {Args['tmpdir']}/snakemake_cluster.json --cluster '{Args['cluster_cmd']}'"
         Args['cluster_cmd'] += f" --resources cores={Args['max_resources']}"
         Args['cluster_cmd'] += f" {Args['snakemake_args']}"
-        print(f'Cluster command: {Args['cluster_cmd']}', file=sys.stderr)
+        print(f"Cluster command: {Args['cluster_cmd']}", file=sys.stderr)
     else:
         Args['cluster_cmd'] = ''
 
@@ -115,8 +115,11 @@ def main():
         print(f"\tIdentified {len(species_cont.representative_genomes)} genomes.\n"
               "\tPrepare URL list for download of genomes from NCBI.", file=sys.stderr)
         species_cont.write_url_list(Args['tmpdir'] + "/repgenomes_urls.txt")
-        species_cont.genomes.to_csv(Args['tmpdir'] + "/genomes.tsv", sep="\t",
-                                    index=False)
+        print("Write table with information to genomes used in phylogenetic "
+              f"analysis to {Args['tmpdir'] + '/genomes.tsv'}.", file=sys.stderr)
+        species_cont.genomes_set.loc[species_cont.genomes_set['GCAid']
+                                     .isin(species_cont.representative_genomes)] \
+            .to_csv(Args['tmpdir'] + "/genomes.tsv", sep="\t", index=False)
 
     if (not os.path.isfile(Args['tmpdir'] + "/done/download_representative_genomes") or
             Args['force']):
@@ -234,9 +237,8 @@ def main():
         print("Annotate the tree with taxonomic information and write to output "
               "file.", file=sys.stderr)
         tree_annot_df = pd.read_csv(Args['tmpdir'] + "/genomes.tsv",
-                                    sep="\t")[['kingdom', 'phylum', 'class',
-                                               'order', 'family', 'genus',
-                                               'species', 'GCAid']]
+                                    sep="\t")[['GCAid', 'label']] \
+            .set_index(['GCAid'])
 
         # Prepare identifiers for annotation
         def concat(r):

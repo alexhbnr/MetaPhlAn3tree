@@ -55,8 +55,10 @@ class Species:
             return taxonomy.drop(['abbr'], axis=1).set_index('rank').T \
                 .assign(GCAid=gca_id) \
                 .assign(taxid=taxid) \
-                .assign(genomelength=strainnumbers[1]) \
-                [['GCAid', 'taxid', 'genomelength'] + list(tax_abbr.values())] \
+                .assign(label=strainname) \
+                .assign(genomelength=strainnumbers[1])[['GCAid', 'label',
+                                                        'taxid', 'genomelength'] +
+                                                       list(tax_abbr.values())] \
                 .reset_index(drop=True)
 
         with bz2.open(self.pkl_fn, "rb") as bzfile:
@@ -118,7 +120,9 @@ class Species:
     def subset_taxa(self, taxalist):
         """Subset representative genomes to selected ones for downloading."""
         if len(taxalist) > 0:
-            self.genomes_set = self.genomes.loc[self.genomes['species'].isin(taxalist)]
+            self.genomes_set = self.genomes.loc[self.genomes['label'].str \
+                                                .extract(r'.+\|s__(.+)\|t__GC[AF]_[0-9]+',
+                                                         expand=False).isin(taxalist)]
             skipped_taxa = [t for t in taxalist
                             if t not in self.genomes_set['species'].tolist()]
             print(f"\tFrom {len(taxalist)} species names in the specified list "
@@ -192,10 +196,10 @@ class Species:
                 ftp_entries.append(esummary_record['DocumentSummarySet'] \
                                    ['DocumentSummary'][0]['FtpPath_RefSeq'])
             link_df.loc[link_df['ftp_path'] == "", 'ftp_path'] = ftp_entries
-        print(f"\t\tSkipping {link_df.loc[link_df['ftp_path'] == ''].shape[0]} "
-              f"genomes ({', '.join(link_df.loc[link_df['ftp_path'] == '', 'GCAid'].tolist())})"
-              " from analysis because of no FTP link information.", file=sys.stderr)
-        link_df = link_df.loc[link_df['ftp_path'] != ""]
+            print(f"\t\tSkipping {link_df.loc[link_df['ftp_path'] == ''].shape[0]} "
+                  f"genomes ({', '.join(link_df.loc[link_df['ftp_path'] == '', 'GCAid'].tolist())})"
+                  " from analysis because of no FTP link information.", file=sys.stderr)
 
+        link_df = link_df.loc[link_df['ftp_path'] != ""]
         link_df['url'] = link_df['ftp_path'].map(generate_url)
         link_df[['GCAid', 'url']].to_csv(outfn, sep="\t", index=False)
