@@ -121,7 +121,10 @@ def main():
                                      .isin(species_cont.representative_genomes)] \
             .to_csv(Args['tmpdir'] + "/genomes.tsv", sep="\t", index=False)
 
-    if (not os.path.isfile(Args['tmpdir'] + "/done/download_representative_genomes") or
+    if Args['stop_at'] == 'download_representative_genomes':
+        print(f"Terminate at checkpoint {Args['stop_at']}.", file=sys.stderr)
+        sys.exit(0)
+    elif (not os.path.isfile(Args['tmpdir'] + "/done/download_representative_genomes") or
             Args['force']):
         print("\nDownload the representative genomes from NCBI\n", file=sys.stderr)
         subprocess.run(f"snakemake -s {Args['snakemakedir']}/download_genomes.Snakefile "
@@ -138,7 +141,10 @@ def main():
                                              Args['tmpdir'])
             sys.exit(1)
 
-    if (not os.path.isfile(Args['tmpdir'] + "/done/install_marker_database") or
+    if Args['stop_at'] == 'install_marker_database':
+        print(f"Terminate at checkpoint {Args['stop_at']}.", file=sys.stderr)
+        sys.exit(0)
+    elif (not os.path.isfile(Args['tmpdir'] + "/done/install_marker_database") or
             Args['force']):
         print("Prepare marker gene database of Segata et al. (2013) for tree "
               "building", file=sys.stderr)
@@ -148,7 +154,10 @@ def main():
         database.install_marker_database(Args['tmpdir'], phylophlan_config)
         Path(Args['tmpdir'] + '/done/install_marker_database').touch(exist_ok=True)
 
-    if (not os.path.isfile(Args['tmpdir'] + "/done/fake_proteomes") or
+    if Args['stop_at'] == 'fake_proteomes':
+        print(f"Terminate at checkpoint {Args['stop_at']}.", file=sys.stderr)
+        sys.exit(0)
+    elif (not os.path.isfile(Args['tmpdir'] + "/done/fake_proteomes") or
             Args['force']):
         print("Uncompress FastA files downloaded from NCBI, align against the "
               "protein marker database of Segata et al. (2013) using DIAMOND "
@@ -166,7 +175,10 @@ def main():
             errormessages.print_errormessage("fake_proteomes", Args['tmpdir'])
             sys.exit(1)
 
-    if (not os.path.isfile(Args['tmpdir'] + "/done/protein_markers") or
+    if Args['stop_at'] == 'protein_markers':
+        print(f"Terminate at checkpoint {Args['stop_at']}.", file=sys.stderr)
+        sys.exit(0)
+    elif (not os.path.isfile(Args['tmpdir'] + "/done/protein_markers") or
             Args['force']):
         print("Clean the fake proteomes, align against the protein marker "
               "database of Segata et al. (2013) using DIAMOND blastp, and "
@@ -183,7 +195,10 @@ def main():
             errormessages.print_errormessage("protein_markers", Args['tmpdir'])
             sys.exit(1)
 
-    if (not os.path.isfile(Args['tmpdir'] + "/done/alignment") or
+    if Args['stop_at'] == 'alignment':
+        print(f"Terminate at checkpoint {Args['stop_at']}.", file=sys.stderr)
+        sys.exit(0)
+    elif (not os.path.isfile(Args['tmpdir'] + "/done/alignment") or
             Args['force']):
         print("Identify the marker genes that are present at least in four "
               "genomes and make alignments, trim non-variant sites and remove "
@@ -200,7 +215,10 @@ def main():
             errormessages.print_errormessage("alignment", Args['tmpdir'])
             sys.exit(1)
 
-    if Args['skip_redefining']:
+    if Args['stop_at'] == 'tree':
+        print(f"Terminate at checkpoint {Args['stop_at']}.", file=sys.stderr)
+        sys.exit(0)
+    elif Args['skip_redefining']:
         if (not os.path.isfile(Args['tmpdir'] + "/done/simple_tree") or
                 Args['force']):
             print("Build gene trees using FastTree, and generate single tree "
@@ -239,14 +257,6 @@ def main():
         tree_annot_df = pd.read_csv(Args['tmpdir'] + "/genomes.tsv",
                                     sep="\t")[['GCAid', 'label']] \
             .set_index(['GCAid'])
-
-        # Prepare identifiers for annotation
-        def concat(r):
-            prefices = ['kingdom', 'phylum', 'class', 'order',
-                        'family', 'genus', 'species', 't']
-            return "|".join([f'{p[0]}__{u}' for p, u in zip(prefices, r)])
-        tree_annot_df['label'] = tree_annot_df.apply(lambda r: concat(r), axis=1)
-        tree_annot_df = tree_annot_df.set_index(['GCAid'])
 
         if Args['skip_redefining']:
             treefn = Args['tmpdir'] + "/MetaPhlAn3tree.FastTree_Astral.tre"
@@ -305,6 +315,11 @@ Parser.add_argument('--nproc', default=8,
                     help='number of parallel jobs to submit to cluster; if '
                          '--local, number of maximum processors to run '
                          'Snakemake with [8]')
+Parser.add_argument('--stop_at', choices=['download_representative_genomes',
+                                          'install_marker_database',
+                                          'fake_proteomes', 'protein_markers',
+                                          'alignment', 'tree'],
+                    help='hold execution at a certain checkpoint')
 Parser.add_argument('--force', action='store_true',
                     help='ignore checkpoints and re-run all steps')
 Parser.add_argument('--clean', action='store_true',
