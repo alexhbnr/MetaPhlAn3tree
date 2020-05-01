@@ -36,6 +36,7 @@ def main():
 
     # Configure snakemake execution
     print("Configure Snakemake for execution.")
+    os.makedirs(Args['tmpdir'], exist_ok=True)
     config.argparse_to_json(Args)
     if Args['snakemakedir'] is None:
         Args['snakemakedir'] = os.path.dirname(os.path.realpath(__file__)) + "/snakemake"
@@ -89,8 +90,6 @@ def main():
         # Download the overview of RefSeq genomes and join information with genomes
         print("\tDownload the GCA assembly summary from NCBI\n",
               file=sys.stderr)
-        if not os.path.isdir(Args['tmpdir']):
-            os.makedirs(Args['tmpdir'])
         subprocess.run(f'cd  {Args["tmpdir"]} && wget -N -nH '
                        '--user-agent=Mozilla/5.0 --relative -r --no-parent '
                        '--reject "index.html*" --cut-dirs=2 -e robots=off '
@@ -108,8 +107,13 @@ def main():
         if Args['taxnames'] is None:
             taxnames = []
         else:
-            taxnames = [line.rstrip().replace("s__", "")
-                        for line in open(Args['taxnames'], 'rt')]
+            if os.path.isfile(Args['taxnames']):
+                taxnames = [line.rstrip()
+                            for line in open(Args['taxnames'], 'rt')]
+            else:
+                print(f"The species list file {Args['taxnames']} does not exist. "
+                      "Specify the correct path to file.", file=sys.stderr)
+                sys.exit(1)
         species_cont.subset_taxa(taxnames)
         species_cont.determine_representative_genomes()
         print(f"\tIdentified {len(species_cont.representative_genomes)} genomes.\n"

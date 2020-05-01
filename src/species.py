@@ -110,7 +110,7 @@ class Species:
                                                                    'true': 'Partial'})
             # Replace missing values
             missing_genomes = self.genomes.loc[self.genomes['assembly_level'].isnull(),
-                                               self.genomes.columns.tolist()[:10]].copy()
+                                               self.genomes.columns.tolist()[:11]].copy()
             missing_genomes = missing_genomes.merge(gca_dfs, how="left", on=['GCAid'])
             self.genomes = pd.concat([self.genomes.loc[~self.genomes['assembly_level'].isnull()],
                                       missing_genomes])
@@ -121,10 +121,10 @@ class Species:
         """Subset representative genomes to selected ones for downloading."""
         if len(taxalist) > 0:
             self.genomes_set = self.genomes.loc[self.genomes['label'].str \
-                                                .extract(r'.+\|s__(.+)\|t__GC[AF]_[0-9]+',
+                                                .extract(r'.+\|(s__.+)\|t__GC[AF]_[0-9]+',
                                                          expand=False).isin(taxalist)]
             skipped_taxa = [t for t in taxalist
-                            if t not in self.genomes_set['species'].tolist()]
+                            if t.replace("s__", "") not in self.genomes_set['species'].tolist()]
             print(f"\tFrom {len(taxalist)} species names in the specified list "
                   f"of taxa, {self.genomes_set['species'].unique().shape[0]} were "
                   f"found in MetaPhlAn database. The following species names "
