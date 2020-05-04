@@ -1,0 +1,24 @@
+---
+title: "MetaPhlAn3tree"
+output:
+    github_document:
+        html_preview: false
+bibliography: references.bib
+---
+
+MetaPhlAn3tree is a pipeline that wraps the functionality of
+[PhyloPhlAn3](https://github.com/biobakery/phylophlan) [@Ascinar2020] in order to automatise the generation of a
+phylogenetic tree based on a set of 400 universal markers genes [@Segata2013] for a set of microbial species detected by
+[MetaPhlAn3](https://github.com/biobakery/MetaPhlAn/tree/3.0).
+
+Provided with the MetaPhlAn3 databases that was used to infer the taxonomic composition, it will
+extract and download a representative of each species in the database or a subset of specified taxa
+and uses these as input to PhyloPhlAn3. The PhyloPhlAn3 pipeline is not directly run itself but its
+functions are wrapped into Snakemake [@Koester2012] pipelines in order to allow for a better
+scalability across clusters.
+
+The result is a phylogenetic tree that can be used as underlying tree for calculating distances
+between metagenomic samples using methods that incorporate the phylogenetic distances of taxa, e.g.
+UniFrac [@Lozupone2007] or PhILR [@Silverman2017].
+
+# Literature
