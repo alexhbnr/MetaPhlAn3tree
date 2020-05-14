@@ -2,10 +2,10 @@
 # Build gene trees using FastTree, and generate single tree using ASTRAL.
 ################################################################################
 
+from glob import glob
 import os
 import sys
 
-import dendropy
 import phylophlan.phylophlan as phylophlan
 from phylophlan.phylophlan import info, error
 
@@ -25,65 +25,45 @@ rule all:
 
 rule create_checkpoint:
     input: 
-        "MetaPhlAn3tree.FastTree_Astral.tre"
+        "MetaPhlAn3tree.IQtree.tre"
     output:
         touch("done/simple_tree")
 
-rule gene_tree1:
+rule link_alignments:
     output:
-        "tmp/gene_tree1/{marker}.tre"
-    message: "Build initial gene tree for marker {wildcards.marker} using FastTree"
+        "tmp/final_alignments/{marker}.aln"
+    message: "Link alignment of marker {wildcards.marker} to folder for contatenation"
     params:
-        condaenv = config['condaenv'] + '/etc/profile.d/conda.sh',
-        aln = "tmp/fragmentary/{marker}.aln",
-    resources:
-        cores = 8
-    threads: 8
+        aln = "tmp/fragmentary/{marker}.aln"
     shell:
-        """
-        set +u
-        source {params.condaenv}
-        conda activate phylophlan
-        set -u
-        export OMP_NUM_THREADS={threads}
-        FastTreeMP -mlacc 2 \
-                   -slownni \
-                   -spr 4 \
-                   -fastest \
-                   -mlnni 4 \
-                   -no2nd \
-                   -lg \
-                   -out {output} \
-                   < {params.aln} 
-        """
+        "ln -s ${{PWD}}/{params.aln} {output}"
 
-rule merging_gene_trees:
+rule concatenate_alignments:
     input:
-        expand("tmp/gene_tree1/{marker}.tre", marker=MARKERS)
+        expand("tmp/final_alignments/{marker}.aln", marker=MARKERS)
     output:
-        "tmp/gene_trees_FastTree.tre"
-    message: "Concatenate all FastTree tree files into a single one"
+        "tmp/markers.aln"
+    message: "Concatenate all markers to single alignment"
     params:
-        dir = "tmp/gene_tree1"
+        dir = "tmp/final_alignments/",
+        species = [os.path.basename(i).replace("fasta", "faa") for i in glob("tmp/clean_aa/*.fasta")]
     run:
-        phylophlan.merging_gene_trees(params.dir, output[0], verbose=True)
+        phylophlan.concatenate(params.species, params.dir, output[0], False, True)
 
-rule astral:
+rule tree1:
     input:
-        "tmp/gene_trees_FastTree.tre"
+        "tmp/markers.aln"
     output:
-        "MetaPhlAn3tree.FastTree_Astral.tre"
-    message: "Summarise FastTree trees using Astral"
-    resources:
-        cores = 1
+        "MetaPhlAn3tree.IQtree.tre"
+    message: "Generate phylogenetic tree using IQtree"
     params:
-        condaenv = config['condaenv'] + '/etc/profile.d/conda.sh'
-    threads: 1
+        prefix = "tmp/MetaPhlAn3tree.IQtree"
+    threads: 24
     shell:
         """
-        set +u
-        source {params.condaenv}
-        conda activate phylophlan
-        set -u
-        java -Xmx400g -jar ${{CONDA_PREFIX}}/bin/astral.5.7.1.jar -i {input} -o {output}
+        iqtree -quiet -nt {threads} -m LG \
+            -s {input} \
+            -pre {params.prefix}
+        cp {params.prefix}.treefile {output}
         """
+
