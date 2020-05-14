@@ -263,7 +263,7 @@ def main():
             .set_index(['GCAid'])
 
         if Args['skip_redefining']:
-            treefn = Args['tmpdir'] + "/MetaPhlAn3tree.FastTree_Astral.tre"
+            treefn = Args['tmpdir'] + "/MetaPhlAn3tree.IQtree.tre"
         else:
             treefn = Args['tmpdir'] + "/MetaPhlAn3tree.RAxML_Astral.tre"
         tre = Tree(open(treefn, "rt").readline())
