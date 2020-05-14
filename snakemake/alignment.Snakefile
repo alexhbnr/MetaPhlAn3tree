@@ -106,39 +106,88 @@ rule msas:
               {input} > {output}
         """
 
-rule trim_non_variant:
+rule trim_gaps:
     input:
         "tmp/msas/{marker}.aln"
+    output:
+        temp("tmp/trim_gap_trim/{marker}.aln")
+    message: "Trim gappy sites from marker {wildcards.marker} using trimal"
+    resources:
+        cores = 1
+    shell:
+        """
+        trimal -gappyout -in {input} -out {output}
+        """
+
+rule trim_gap_perc:
+    input:
+        "tmp/trim_gap_trim/{marker}.aln"
+    output:
+        temp("tmp/trim_gap_perc/{marker}.aln")
+    message: "Trim sites with a high percentage of gaps for marker {wildcards.marker}"
+    resources:
+        cores = 1
+    params:
+        gap_threshold = 0.85
+    run:
+        # Function phylophlan.trim_gap_perc_rec without the overhead
+        # of the multiprocessing module and using scikit-bio instead of biopython
+        inp, out, thr, verbose = [input[0], output[0], params.gap_threshold, True]
+        info('Trimming gappy columns "{}"\n'.format(inp))
+        if os.stat(inp).st_size > 0:
+            inp_aln = TabularMSA.read(inp, constructor=Protein, lowercase=True)
+
+            keep = [phylophlan.gap_cost(inp_aln[:, i], norm=True) < thr
+                    for i in range(0, inp_aln.shape[1])]
+            retained_aln = inp_aln[:, keep]
+
+            if retained_aln.shape[1] > 0:
+                retained_aln.write(out, "fasta")
+            else:
+                info('"{}" discarded because no columns retained while removing not variant sites (thr: {})\n'.format(inp, thr))
+                Path(out).touch()
+        else:
+            Path(out).touch()
+
+rule trim_non_variant:
+    input:
+        "tmp/trim_gap_perc/{marker}.aln"
     output:
         temp("tmp/trim_non_variant/{marker}.aln")
     message: "Trim non-variant sites from marker {wildcards.marker}"
     resources:
         cores = 1
     params:
-        non_variant_threshold = 0.99
+        non_variant_threshold = 0.90
     run:
         # Function phylophlan.trim_not_variant_rec without the overhead
         # of the multiprocessing module
         inp, out, thr, verbose = [input[0], output[0],
                                   params.non_variant_threshold, True]
         info('Trimming not variant "{}"\n'.format(inp))
-        aln = TabularMSA.read(inp, constructor=Protein, lowercase=False)
+        if os.stat(inp).st_size > 0:
+            aln = TabularMSA.read(inp, constructor=Protein, lowercase=False)
 
-        def evaluate_nonvariant(site):
-            sitefreq = site.frequencies()
-            if "-" in sitefreq:
-                del sitefreq['-']
-            nongap_samples = sum(sitefreq.values())
-            remove_site = [(count / nongap_samples) >= params.non_variant_threshold
-                           for aa, count in sitefreq.items()]
-            return any(remove_site)
+            def evaluate_nonvariant(site):
+                sitefreq = site.frequencies()
+                if "-" in sitefreq:
+                    del sitefreq['-']
+                nongap_samples = sum(sitefreq.values())
+                # remove_site = [(count / nongap_samples) >= params.non_variant_threshold
+                remove_site = [(count / nongap_samples) >= 0.99
+                            for aa, count in sitefreq.items()]
+                return any(remove_site)
 
-        nonvariant_sites = [evaluate_nonvariant(aln.iloc[:, i])
-                            for i in tqdm.tqdm(range(aln.shape[1]))]
-        if np.sum(nonvariant_sites) < aln.shape[1]:
-            aln.loc[:, nonvariant_sites].write(out, "fasta")
-        elif verbose:
-            info('"{}" discarded because no columns retained while removing not variant sites (thr: {})\n'.format(inp, thr))
+            nonvariant_sites = [evaluate_nonvariant(aln.iloc[:, i])
+                                for i in tqdm.tqdm(range(aln.shape[1]))]
+            if np.sum(nonvariant_sites) > 0:
+                aln.loc[:, nonvariant_sites].write(out, "fasta")
+            elif verbose:
+                info('"{}" discarded because no columns retained while removing not variant sites (thr: {})\n'.format(inp, thr))
+                Path(out).touch()
+        else:
+                Path(out).touch()
+
 
 rule remove_fragmentary_entries:
     input:
@@ -149,7 +198,7 @@ rule remove_fragmentary_entries:
     resources:
         cores = 1
     params:
-        fragmentary_threshold = 0.9,
+        fragmentary_threshold = 0.67,
         min_num_entries = 4
     run:
         # Function phylophlan.remove_fragmentary_entries_rec without the
@@ -159,10 +208,13 @@ rule remove_fragmentary_entries:
                                                         params.min_num_entries,
                                                         True]
         info('Fragmentary "{}"\n'.format(inp))
-        inp_aln = TabularMSA.read(inp, constructor=Protein, lowercase=False)
-        gap_frequencies = inp_aln.gap_frequencies(axis="position") / inp_aln.shape[1]
+        if os.stat(inp).st_size > 0:
+            inp_aln = TabularMSA.read(inp, constructor=Protein, lowercase=False)
+            gap_frequencies = inp_aln.gap_frequencies(axis="position") / inp_aln.shape[1]
 
-        if np.sum(gap_frequencies < frag_thr) > 0:
-            inp_aln[gap_frequencies < frag_thr, :].write(out, "fasta")
+            if np.sum(gap_frequencies < frag_thr) > 0:
+                inp_aln[gap_frequencies < frag_thr, :].write(out, "fasta")
+            else:
+                Path(out).touch()
         else:
             Path(out).touch()
