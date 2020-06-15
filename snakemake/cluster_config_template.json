@@ -12,9 +12,19 @@
     "gene_marker_selection": {
         "mem" : 2000
     },
+
+    "inputs2markers": {
+        "mem" : 16000
+    },
     
     "msas": {
         "mem" : 16000
+    },
+
+    "trim_gap_perc": {
+        "mem" : 8000,
+        "partition": "medium",
+        "time": "2-00:00"
     },
 
     "trim_non_variant": {
@@ -23,21 +33,22 @@
         "time": "2-00:00"
     },
 
-    "gene_tree1": {
-        "mem" : 4000,
+    "remove_fragmentary_entries": {
+        "mem" : 8000,
         "partition": "medium",
         "time": "2-00:00"
     },
 
-    "gene_tree2": {
-        "mem" : 40000,
+    "tree1": {
+        "mem" : 24000,
         "partition": "long",
-        "time": "30-00:00"
+        "time": "14-00:00"
     },
 
-    "astral": {
-        "mem" : 500000,
+    "tree2": {
+        "mem" : 24000,
         "partition": "long",
-        "time": "30-00:00"
+        "time": "14-00:00"
     }
+
 }
