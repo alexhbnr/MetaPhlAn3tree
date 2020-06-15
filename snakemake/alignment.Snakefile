@@ -90,7 +90,7 @@ rule msas:
     message: "Align genomes for proteome marker {wildcards.marker}"
     resources:
         cores = 1
-    threads: 4
+    threads: 8
     params:
         condaenv = config['condaenv'] + '/etc/profile.d/conda.sh'
     shell:
@@ -102,7 +102,8 @@ rule msas:
         mafft --quiet \
               --anysymbol \
               --thread {threads} \
-              --auto \
+              --localpair \
+              --maxiterate 100 \
               {input} > {output}
         """
 
@@ -173,9 +174,8 @@ rule trim_non_variant:
                 if "-" in sitefreq:
                     del sitefreq['-']
                 nongap_samples = sum(sitefreq.values())
-                # remove_site = [(count / nongap_samples) >= params.non_variant_threshold
-                remove_site = [(count / nongap_samples) >= 0.99
-                            for aa, count in sitefreq.items()]
+                remove_site = [(count / nongap_samples) >= thr
+                               for aa, count in sitefreq.items()]
                 return any(remove_site)
 
             nonvariant_sites = [evaluate_nonvariant(aln.iloc[:, i])
