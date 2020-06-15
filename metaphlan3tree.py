@@ -222,28 +222,11 @@ def main():
     if Args['stop_at'] == 'tree':
         print(f"Terminate at checkpoint {Args['stop_at']}.", file=sys.stderr)
         sys.exit(0)
-    elif Args['skip_redefining']:
-        if (not os.path.isfile(Args['tmpdir'] + "/done/simple_tree") or
-                Args['force']):
-            print("Build gene trees using FastTree, and generate single tree "
-                  "using ASTRAL.", file=sys.stderr)
-            subprocess.run(f"snakemake -s {Args['snakemakedir']}/simple_tree.Snakefile "
-                           f"--configfile {Args['tmpdir']}/snakemake_config.json "
-                           f"{Args['cluster_cmd']} "
-                           "--restart-times 5 "
-                           f"-j {Args['nproc']}", shell=True,
-                           stderr=open(Args['tmpdir'] +
-                                       "/logs/snakemake-simple_tree.log", "at"))
-        if not os.path.isfile(Args['tmpdir'] +
-                              "/done/simple_tree"):
-            errormessages.print_errormessage("simple_tree", Args['tmpdir'])
-            sys.exit(1)
     else:
         if (not os.path.isfile(Args['tmpdir'] + "/done/tree") or
                 Args['force']):
-            print("Build gene trees using FastTree, resolve polytomies using "
-                  "DendroPy, re-define trees using RAxML, and generate single "
-                  "tree using ASTRAL.", file=sys.stderr)
+            print("Concatenate all markers into one alignment, build tree using "
+                  "FastTree, and refining using RAxML", file=sys.stderr)
             subprocess.run(f"snakemake -s {Args['snakemakedir']}/tree.Snakefile "
                            f"--configfile {Args['tmpdir']}/snakemake_config.json "
                            f"{Args['cluster_cmd']} "
@@ -262,10 +245,7 @@ def main():
                                     sep="\t")[['GCAid', 'label']] \
             .set_index(['GCAid'])
 
-        if Args['skip_redefining']:
-            treefn = Args['tmpdir'] + "/MetaPhlAn3tree.IQtree.tre"
-        else:
-            treefn = Args['tmpdir'] + "/MetaPhlAn3tree.RAxML_Astral.tre"
+        treefn = Args['tmpdir'] + "/MetaPhlAn3tree.RAxML.tre"
         tre = Tree(open(treefn, "rt").readline())
         for l in tre.iter_leaves():
             l.name = tree_annot_df.loc[l.name.replace(".faa", ""), 'label']
@@ -280,7 +260,7 @@ def main():
 # Argument parser
 Parser = argparse.ArgumentParser(description='Generate phylogenetic tree based '
                                  'on species present in MetaPhlAn3')
-Parser.add_argument('-o', '--output', help='name of the tree file')
+Parser.add_argument('-o', '--output', required = True, help='name of the tree file')
 Parser.add_argument('--metaphlanversion', default="latest",
                     help='specify version of MetaPhlAn for which tree should '
                     'be constructed, e.g. v293 ["latest"]')
@@ -295,9 +275,6 @@ Parser.add_argument('--databasedir', required=True,
 Parser.add_argument('--taxnames',
                     help='subset tree building to species names listed in file;'
                     ' one species name per line')
-Parser.add_argument('--skip_redefining', action='store_true',
-                    help='skip removing polytomies and re-defining the gene '
-                    'trees using RAxML')
 Parser.add_argument('--snakemakedir',
                     help='folder with SnakeMake workflows [./snakemake]')
 Parser.add_argument('--local', action='store_true',

@@ -12,9 +12,6 @@ CHECKPOINT_FILES = {'download_representative_genomes': ('download_genomes.Snakef
                     'alignment': ('alignment.Snakefile',
                                   'alignment',
                                   'alignment.log'),
-                    'simple_tree': ('simple_tree.Snakefile',
-                                    'simple_tree',
-                                    'simple_tree.log'),
                     'tree': ('tree.Snakefile',
                              'tree',
                              'tree.log')}
