@@ -18,6 +18,8 @@ workdir: config['tmpdir']
 
 GENOMES, = glob_wildcards("fasta/{gcaid}.fna.gz")
 
+localrules: decompress_genomes
+
 rule all:
     input:
         "done/fake_proteomes"
