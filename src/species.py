@@ -17,8 +17,8 @@ from pandas.api.types import CategoricalDtype
 
 
 # Standard regex searches
-extract_gcaid = re.compile(r'.+\|t__(GC[AF]_[0-9]+)$')
-extract_taxonomy = re.compile(r'(.+)\|t__GC[AF]_[0-9]+$')
+extract_gcaid = re.compile(r'.+\|t__((GCA|GCF|PRJNA)_*[0-9]+)$')
+extract_taxonomy = re.compile(r'(.+)\|t__(GCA|GCF|PRJNA)_*[0-9]+$')
 split_rank = re.compile(r'([a-z])__(.+)')
 
 # Taxonomy abbreviations
@@ -64,7 +64,8 @@ class Species:
         with bz2.open(self.pkl_fn, "rb") as bzfile:
             strains = pickle.load(bzfile)['taxonomy']
         genome_df = [parse_strain_info(name, numbers)
-                     for name, numbers in strains.items()]
+                     for name, numbers in strains.items()
+                     if not name.startswith("k__Vir") ]
         self.genomes = pd.concat(genome_df)
 
     def join_genbank(self, genbankfn):
@@ -80,7 +81,8 @@ class Species:
     def get_missing_information(self):
         """Fill in missing information from NCBI Assembly."""
         # Identify missing entries from GenBank table
-        missing_gcas = self.genomes.loc[self.genomes['assembly_level'].isnull(),
+        missing_gcas = self.genomes.loc[(self.genomes['assembly_level'].isnull() &
+                                         ~self.genomes['GCAid'].str.startswith("PRJ")),
                                         'GCAid'].tolist()
         if len(missing_gcas) > 0:
             print(f"\t\t{len(missing_gcas)} genomes have missing information. Search "
@@ -91,7 +93,7 @@ class Species:
                 eterm_handle = Entrez.esearch(db="assembly", term=gcaid, report="full")
                 eterm_record = Entrez.read(eterm_handle)
                 esummary_handle = Entrez.esummary(db="assembly", id=eterm_record['IdList'][0], report='full')
-                esummary_record = Entrez.read(esummary_handle)
+                esummary_record = Entrez.read(esummary_handle, validate=False)
                 gca_entries.append([esummary_record['DocumentSummarySet'] \
                                     ['DocumentSummary'][0][f]
                                     for f in ['AssemblyAccession', 'RefSeq_category',
@@ -192,7 +194,7 @@ class Species:
                 eterm_handle = Entrez.esearch(db="assembly", term=gcaid, report="full")
                 eterm_record = Entrez.read(eterm_handle)
                 esummary_handle = Entrez.esummary(db="assembly", id=eterm_record['IdList'][0], report='full')
-                esummary_record = Entrez.read(esummary_handle)
+                esummary_record = Entrez.read(esummary_handle, validate=False)
                 ftp_entries.append(esummary_record['DocumentSummarySet'] \
                                    ['DocumentSummary'][0]['FtpPath_RefSeq'])
             link_df.loc[link_df['ftp_path'] == "", 'ftp_path'] = ftp_entries
