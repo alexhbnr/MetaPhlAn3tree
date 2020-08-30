@@ -18,7 +18,9 @@
     },
     
     "msas": {
-        "mem" : 16000
+        "mem" : 16000,
+        "partition": "medium",
+        "time": "2-00:00"
     },
 
     "trim_gap_perc": {
