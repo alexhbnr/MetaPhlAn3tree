@@ -50,7 +50,7 @@ rule concatenate_alignments:
     message: "Concatenate all markers to single alignment"
     params:
         dir = "tmp/final_alignments/",
-        species = [os.path.basename(i).replace("fasta", "faa") for i in glob("tmp/clean_aa/*.fasta")]
+        species = [os.path.basename(i).replace(".gz", "") for i in glob("tmp/markers_aa/*.faa.gz")]
     run:
         phylophlan.concatenate(params.species, params.dir, output[0], False, True)
 
